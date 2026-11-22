@@ -7,12 +7,12 @@ more files, fetch them back by URL.
 
 ```bash
 npm install
-npm run dev     # http://localhost:3000
+npm run dev     # prints the LAN URL, e.g. http://192.168.1.42:3000
 ```
 
 | Env | Default | Purpose |
 |---|---|---|
-| `BASE_URL` | `http://localhost:3000` | Prefix for returned share URLs |
+| `BASE_URL` | this machine's LAN address, e.g. `http://192.168.1.42:3000` | Prefix for returned share URLs |
 | `TTL_HOURS` | `24` | How long artifacts live |
 
 ## API
@@ -25,7 +25,7 @@ Returns an opaque bundle id and a share URL per file.
 ```json
 {
   "id": "bba1a30b-56e9-45ef-bc1b-95cb0b6c724d",
-  "urls": ["http://localhost:3000/artifacts/bba1a30b-.../index.html"]
+  "urls": ["http://192.168.1.42:3000/artifacts/bba1a30b-.../index.html"]
 }
 ```
 

@@ -4,11 +4,22 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { mkdirSync, createWriteStream, readdirSync, statSync, rmSync } from "node:fs";
 import { basename, join } from "node:path";
 import { randomUUID } from "node:crypto";
+import { networkInterfaces } from "node:os";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 const STORE = "artifacts";
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const PORT = 3000;
+// ponytail: first real IPv4. Several NICs (or the wrong one) → set BASE_URL.
+const lanIp = () => {
+  for (const [name, addrs] of Object.entries(networkInterfaces())) {
+    if (/^(lo|utun|awdl|llw|bridge|docker|veth|vmnet)/.test(name)) continue;
+    const hit = addrs?.find((a) => a.family === "IPv4" && !a.internal);
+    if (hit) return hit.address;
+  }
+  return "127.0.0.1";
+};
+const BASE = process.env.BASE_URL ?? `http://${lanIp()}:${PORT}`;
 const TTL_MS = Number(process.env.TTL_HOURS ?? 24) * 3600_000;
 
 mkdirSync(STORE, { recursive: true });
@@ -53,4 +64,4 @@ const sweep = () => {
 sweep();
 setInterval(sweep, 3600_000).unref();
 
-serve({ fetch: app.fetch, port: 3000 }, (i) => console.log(`http://localhost:${i.port}`));
+serve({ fetch: app.fetch, hostname: "0.0.0.0", port: PORT }, () => console.log(BASE));
