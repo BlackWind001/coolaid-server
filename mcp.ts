@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { openAsBlob } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 
 const SERVER = (process.env.ARTIFACT_SERVER_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -14,18 +14,29 @@ const json = async (res: Response) => {
   return res.json();
 };
 
+const expand = async (p: string): Promise<string[]> =>
+  (await stat(p)).isDirectory()
+    ? (await readdir(p, { recursive: true, withFileTypes: true }))
+        .filter((e) => e.isFile())
+        .map((e) => join(e.parentPath, e.name))
+    : [p];
+
 const mcp = new McpServer({ name: "artifact-server", version: "0.1.0" });
 
 mcp.registerTool(
   "generate",
   {
     description:
-      "Upload local files as one artifact bundle and get shareable URLs. Use this to share files you produced (HTML, images, code, etc.) with a person or another agent.",
-    inputSchema: { paths: z.array(z.string()).min(1).describe("Local file paths to upload") },
+      "Upload local files and/or folders as one artifact bundle and get shareable URLs. Folders are uploaded recursively but flattened into one bundle. Use this to share files you produced (HTML, images, code, etc.) with a person or another agent.",
+    inputSchema: { paths: z.array(z.string()).min(1).describe("Local file or folder paths to upload") },
   },
   async ({ paths }) => {
+    const files = (await Promise.all(paths.map((p) => expand(resolve(p))))).flat();
+    const seen = new Set<string>();
+    const dupes = files.map((f) => basename(f)).filter((n) => seen.size === seen.add(n).size);
+    if (dupes.length) throw new Error(`Duplicate file names (bundles are flat): ${[...new Set(dupes)].join(", ")}`);
     const fd = new FormData();
-    for (const p of paths) fd.append("files", await openAsBlob(resolve(p)), basename(p));
+    for (const f of files) fd.append("files", await openAsBlob(f), basename(f));
     return text(await json(await fetch(`${SERVER}/artifacts`, { method: "POST", body: fd })));
   }
 );
@@ -57,6 +68,26 @@ mcp.registerTool(
     );
     return text({ id, files: saved });
   }
+);
+
+const ask = (text: string) => ({ messages: [{ role: "user" as const, content: { type: "text" as const, text } }] });
+
+mcp.registerPrompt(
+  "generate",
+  {
+    description: "Upload files or folders and get shareable artifact URLs",
+    argsSchema: { paths: z.string().describe("Comma-separated file or folder paths") },
+  },
+  ({ paths }) => ask(`Call the \`generate\` tool with these paths: ${paths}. Then give me the share URLs.`)
+);
+
+mcp.registerPrompt(
+  "pull",
+  {
+    description: "Download an artifact bundle into this workspace",
+    argsSchema: { ref: z.string().describe("Bundle id or share URL") },
+  },
+  ({ ref }) => ask(`Call the \`pull\` tool with ref "${ref}". Then list the downloaded files.`)
 );
 
 await mcp.connect(new StdioServerTransport());

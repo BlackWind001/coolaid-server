@@ -68,7 +68,7 @@ it on the agent's machine. It needs the HTTP server running somewhere it can rea
 
 | Tool | Input | Does |
 |---|---|---|
-| `generate` | `paths: string[]` | Uploads local files as one bundle, returns `{ id, urls }` |
+| `generate` | `paths: string[]` (files or folders) | Uploads files as one bundle, returns `{ id, urls }`. Folders are walked recursively and flattened; duplicate file names are rejected |
 | `pull` | `ref` (bundle id or share URL), optional `dir` | Downloads every file in the bundle to `dir` (default `./.artifacts/<id>`) |
 
 If `ref` is a full URL, `pull` downloads from that URL's host. Everything else uses
