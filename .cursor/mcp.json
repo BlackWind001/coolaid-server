@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "artifacts": {
+      "command": "npx",
+      "args": ["tsx", "/Users/anirudhms/Desktop/Projects/artifact-server/mcp.ts"],
+      "env": { "ARTIFACT_SERVER_URL": "http://localhost:3000" }
+    }
+  }
+}

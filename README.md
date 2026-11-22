@@ -61,6 +61,33 @@ restriction comes from). Key `files`, hover the key cell and switch the **Text/F
 dropdown to **File**. Repeat the `files` row per file. Do not set `Content-Type`
 yourself — Postman has to generate the multipart boundary.
 
+## MCP server
+
+`mcp.ts` is a stdio MCP server that lets an agent use the HTTP server above. Run
+it on the agent's machine. It needs the HTTP server running somewhere it can reach.
+
+| Tool | Input | Does |
+|---|---|---|
+| `generate` | `paths: string[]` | Uploads local files as one bundle, returns `{ id, urls }` |
+| `pull` | `ref` (bundle id or share URL), optional `dir` | Downloads every file in the bundle to `dir` (default `./.artifacts/<id>`) |
+
+If `ref` is a full URL, `pull` downloads from that URL's host. Everything else uses
+`ARTIFACT_SERVER_URL` (default `http://localhost:3000`).
+
+Cursor (`.cursor/mcp.json`) / Claude Desktop config:
+
+```json
+{
+  "mcpServers": {
+    "artifacts": {
+      "command": "npx",
+      "args": ["tsx", "/abs/path/to/artifact-server/mcp.ts"],
+      "env": { "ARTIFACT_SERVER_URL": "http://192.168.1.42:3000" }
+    }
+  }
+}
+```
+
 ## Storage & expiry
 
 Files land in `artifacts/<uuid>/<filename>`. A sweep on startup and hourly thereafter
